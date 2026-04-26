@@ -197,7 +197,7 @@ def engineer_age_ordinal(df: pd.DataFrame) -> pd.DataFrame:
         column.
     """
     df = df.copy()
-    df["age_ordinal"] = df["age"].map(_AGE_BRACKET_MAP)
+    df["age_ordinal"] = df["age"].map(_AGE_BRACKET_MAP).fillna(-1).astype(int)
     df = df.drop(columns=["age"])
     logger.info("Engineered age ordinal feature")
     return df

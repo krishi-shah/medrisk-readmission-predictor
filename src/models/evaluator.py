@@ -103,6 +103,12 @@ def find_optimal_threshold(
         best_precision,
         min_recall,
     )
+    if best_precision < 0:
+        logger.warning(
+            "No threshold achieved min_recall=%.2f; defaulting to %.2f",
+            min_recall,
+            best_threshold,
+        )
     return best_threshold
 
 

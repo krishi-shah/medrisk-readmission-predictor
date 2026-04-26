@@ -51,6 +51,8 @@ class ModelPredictor:
             logger.info("Decision threshold loaded: %.4f", self.threshold)
         except FileNotFoundError:
             logger.warning("Threshold file not found at %s – using default 0.5", threshold_path)
+        except (json.JSONDecodeError, ValueError, TypeError) as exc:
+            logger.warning("Invalid threshold file at %s (%s) – using default 0.5", threshold_path, exc)
 
     @property
     def is_ready(self) -> bool:
@@ -78,7 +80,14 @@ class ModelPredictor:
         -------
         dict
             Keys compatible with :class:`PredictionResponse`.
+
+        Raises
+        ------
+        RuntimeError
+            If the model or preprocessor is not loaded.
         """
+        if not self.is_ready:
+            raise RuntimeError("Model or preprocessor is not loaded.")
         df = pd.DataFrame([features])
         X_transformed = self.preprocessor.transform(df)
         proba: float = float(self.model.predict_proba(X_transformed)[0, 1])

@@ -1,8 +1,5 @@
 data:
   raw_path: data/raw/diabetic_data.csv
-  ids_mapping_path: data/raw/IDs_mapping.csv
-  processed_path: data/processed
-  sample_path: data/sample/sample_data.csv
 
 features:
   numeric:
@@ -37,24 +34,7 @@ training:
     - xgboost
     - lightgbm
 
-optuna:
-  xgboost:
-    n_estimators: [100, 1000]
-    max_depth: [3, 10]
-    learning_rate: [0.01, 0.3]
-    subsample: [0.6, 1.0]
-    colsample_bytree: [0.6, 1.0]
-    scale_pos_weight: [5, 15]
-  lightgbm:
-    n_estimators: [100, 1000]
-    max_depth: [3, 10]
-    learning_rate: [0.01, 0.3]
-    subsample: [0.6, 1.0]
-    colsample_bytree: [0.6, 1.0]
-    scale_pos_weight: [5, 15]
-
 mlflow:
-  tracking_uri: mlruns
   experiment_name: medrisk-readmission
 
 serving:

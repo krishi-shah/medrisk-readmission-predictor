@@ -116,7 +116,7 @@ async def predict(patient: PatientFeatures) -> PredictionResponse:
         result = predictor.predict(patient.model_dump())
     except Exception as exc:
         logger.exception("Prediction failed")
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(status_code=500, detail="Prediction failed due to an internal error.") from exc
     return PredictionResponse(**result)
 
 
@@ -128,7 +128,7 @@ async def predict_batch(body: BatchPredictionRequest) -> BatchPredictionResponse
         results = predictor.predict_batch([p.model_dump() for p in body.patients])
     except Exception as exc:
         logger.exception("Batch prediction failed")
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(status_code=500, detail="Batch prediction failed due to an internal error.") from exc
     return BatchPredictionResponse(
         predictions=[PredictionResponse(**r) for r in results],
     )

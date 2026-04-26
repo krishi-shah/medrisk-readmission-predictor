@@ -6,10 +6,8 @@ Supports both tree-based (XGBoost, LightGBM, Random Forest) and linear
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
-import matplotlib.pyplot as plt
 import numpy as np
 import shap
 from sklearn.linear_model import LogisticRegression
@@ -55,62 +53,6 @@ def compute_shap_values(
 
     logger.info("Computed SHAP values for %d samples", X.shape[0])
     return shap_values
-
-
-def generate_summary_plot(
-    shap_values: shap.Explanation,
-    X: np.ndarray,
-    save_path: str | Path | None = None,
-) -> None:
-    """Create a SHAP beeswarm summary plot and optionally save to disk.
-
-    Parameters
-    ----------
-    shap_values:
-        SHAP explanation object.
-    X:
-        Feature matrix used for colour-coding feature values.
-    save_path:
-        If provided, the figure is saved to this path.
-    """
-    fig = plt.figure(figsize=(10, 7))
-    shap.plots.beeswarm(shap_values, show=False)
-
-    if save_path is not None:
-        save_path = Path(save_path)
-        save_path.parent.mkdir(parents=True, exist_ok=True)
-        fig.savefig(save_path, dpi=150, bbox_inches="tight")
-        logger.info("SHAP summary plot saved to %s", save_path)
-
-    plt.close(fig)
-
-
-def generate_waterfall_plot(
-    shap_values: shap.Explanation,
-    index: int = 0,
-    save_path: str | Path | None = None,
-) -> None:
-    """Create a SHAP waterfall plot for a single observation.
-
-    Parameters
-    ----------
-    shap_values:
-        SHAP explanation object.
-    index:
-        Row index of the observation to explain.
-    save_path:
-        If provided, the figure is saved to this path.
-    """
-    fig = plt.figure(figsize=(10, 6))
-    shap.plots.waterfall(shap_values[index], show=False)
-
-    if save_path is not None:
-        save_path = Path(save_path)
-        save_path.parent.mkdir(parents=True, exist_ok=True)
-        fig.savefig(save_path, dpi=150, bbox_inches="tight")
-        logger.info("SHAP waterfall plot saved to %s", save_path)
-
-    plt.close(fig)
 
 
 def get_top_reasons(
