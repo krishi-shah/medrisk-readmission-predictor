@@ -61,6 +61,12 @@ class TestCleanData:
         assert cleaned["readmitted"].iloc[0] == 1  # <30 -> 1
         assert cleaned["readmitted"].iloc[3] == 0  # NO -> 0
 
+    def test_missing_medical_specialty_column(self, raw_df):
+        df = raw_df.drop(columns=["medical_specialty"])
+        cleaned = clean_data(df)
+        assert "medical_specialty_missing" in cleaned.columns
+        assert cleaned["medical_specialty_missing"].eq(1).all()
+
 
 class TestPreprocessingPipeline:
     def test_output_has_no_nans(self):

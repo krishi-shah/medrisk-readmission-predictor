@@ -12,6 +12,9 @@ features:
     - num_med_changes
     - num_meds_active
     - total_prior_visits
+    - insulin_changed
+    - high_utilizer
+    - medical_specialty_missing
   categorical:
     - race
     - gender
@@ -28,6 +31,7 @@ training:
   n_optuna_trials: 50
   optimization_metric: pr_auc
   threshold_min_recall: 0.70
+  cv_folds: 5
   models:
     - logistic_regression
     - random_forest
@@ -48,3 +52,10 @@ serving:
 paths:
   models_dir: models
   reports_dir: reports/figures
+  metrics_path: reports/metrics/latest_metrics.json
+
+quality_gates:
+  min_pr_auc: 0.10
+  min_recall: 0.70
+  max_brier_score: 0.30
+  subgroup_max_recall_gap: 0.20

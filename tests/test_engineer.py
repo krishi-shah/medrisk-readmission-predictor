@@ -99,6 +99,13 @@ class TestMedicationFeatures:
         assert "metformin" not in df.columns
         assert "insulin" not in df.columns
 
+    def test_handles_missing_medication_columns(self):
+        df = pd.DataFrame({"some_other_col": [1, 2]})
+        result = engineer_medication_features(df)
+        assert result["num_med_changes"].tolist() == [0, 0]
+        assert result["num_meds_active"].tolist() == [0, 0]
+        assert result["insulin_changed"].tolist() == [0, 0]
+
 
 class TestUtilizationFeatures:
     def test_total_prior_visits(self):

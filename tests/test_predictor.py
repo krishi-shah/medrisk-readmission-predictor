@@ -19,8 +19,10 @@ def mock_model_artifacts(tmp_path):
 
     numeric_features = ["age_ordinal", "time_in_hospital", "num_lab_procedures",
                         "num_procedures", "num_medications", "number_diagnoses",
-                        "num_med_changes", "num_meds_active", "total_prior_visits"]
-    categorical_features = ["race", "gender", "diag1_category"]
+                        "num_med_changes", "num_meds_active", "total_prior_visits",
+                        "insulin_changed", "high_utilizer", "medical_specialty_missing"]
+    categorical_features = ["race", "gender", "diag1_category", "diag2_category",
+                            "diag3_category", "admission_type_id"]
 
     preprocessor = ColumnTransformer(
         transformers=[
@@ -45,12 +47,20 @@ def mock_model_artifacts(tmp_path):
         "num_med_changes": [1, 3, 2, 0, 2, 1, 3, 1],
         "num_meds_active": [5, 8, 6, 3, 7, 4, 8, 5],
         "total_prior_visits": [1, 4, 3, 0, 6, 1, 5, 2],
+        "insulin_changed": [0, 1, 0, 0, 1, 0, 1, 0],
+        "high_utilizer": [0, 0, 0, 0, 1, 0, 1, 0],
+        "medical_specialty_missing": [1, 0, 1, 1, 0, 1, 0, 1],
         "race": ["Caucasian", "AfricanAmerican", "Caucasian", "Hispanic",
                  "Caucasian", "Asian", "Caucasian", "AfricanAmerican"],
         "gender": ["Female", "Male", "Female", "Male",
                    "Female", "Male", "Female", "Male"],
         "diag1_category": ["Circulatory", "Diabetes", "Respiratory", "Other",
                            "Circulatory", "Diabetes", "Injury", "Digestive"],
+        "diag2_category": ["Other", "Diabetes", "Other", "Other",
+                           "Circulatory", "Diabetes", "Injury", "Digestive"],
+        "diag3_category": ["Other", "Other", "Other", "Other",
+                           "Circulatory", "Diabetes", "Injury", "Digestive"],
+        "admission_type_id": ["1", "1", "2", "1", "3", "1", "2", "1"],
     })
     y_train = np.array([1, 1, 0, 0, 1, 0, 1, 0])
 
@@ -141,6 +151,24 @@ class TestModelPredictor:
         assert len(results) == 2
         for result in results:
             assert 0.0 <= result["risk_score"] <= 1.0
+
+    def test_predict_with_missing_optional_features(self, predictor):
+        partial = {
+            "age_ordinal": 7,
+            "time_in_hospital": 5,
+            "num_lab_procedures": 44,
+            "num_procedures": 1,
+            "num_medications": 18,
+            "number_diagnoses": 9,
+            "num_med_changes": 3,
+            "num_meds_active": 8,
+            "total_prior_visits": 4,
+            "gender": "Female",
+            "race": "Caucasian",
+            "diag1_category": "Circulatory",
+        }
+        result = predictor.predict(partial)
+        assert 0.0 <= result["risk_score"] <= 1.0
 
     def test_risk_tier_low(self, predictor):
         assert predictor._get_risk_tier(0.1) == "Low"

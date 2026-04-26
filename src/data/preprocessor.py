@@ -41,10 +41,15 @@ def clean_data(df: pd.DataFrame) -> pd.DataFrame:
     df = df.drop(columns=["encounter_id", "patient_nbr", "weight", "payer_code"],
                  errors="ignore")
 
-    df["medical_specialty_missing"] = df["medical_specialty"].isna().astype(int)
-    df = df.drop(columns=["medical_specialty"])
+    if "medical_specialty" in df.columns:
+        df["medical_specialty_missing"] = df["medical_specialty"].isna().astype(int)
+        df = df.drop(columns=["medical_specialty"], errors="ignore")
+    else:
+        df["medical_specialty_missing"] = 1
 
     df["readmitted"] = (df["readmitted"] == "<30").astype(int)
+    if "admission_type_id" in df.columns:
+        df["admission_type_id"] = df["admission_type_id"].astype(str)
 
     logger.info(
         "Cleaned data — shape: %s, target rate: %.3f",

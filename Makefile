@@ -1,10 +1,13 @@
-.PHONY: install train run-api run-ui test test-cov docker-up docker-down mlflow-ui clean
+.PHONY: install train evaluate run-api run-ui test test-cov docker-up docker-down mlflow-ui clean
 
 install:
 	pip install -r requirements.txt
 
 train:
 	python -m src.models.trainer
+
+evaluate:
+	python -m src.models.evaluate --train-if-missing
 
 run-api:
 	uvicorn src.serving.api:app --host 0.0.0.0 --port 8000 --reload

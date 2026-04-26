@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 
 from src.models.explainer import explain_prediction
+from src.utils.config import get_config
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -31,6 +32,10 @@ class ModelPredictor:
         self.preprocessor = None
         self.threshold: float = 0.5
         self.feature_names: list[str] = []
+        cfg = get_config().get("features", {})
+        self.numeric_features: list[str] = list(cfg.get("numeric", []))
+        self.categorical_features: list[str] = list(cfg.get("categorical", []))
+        self.required_features: list[str] = self.numeric_features + self.categorical_features
 
         try:
             self.model = joblib.load(model_path)
@@ -88,7 +93,8 @@ class ModelPredictor:
         """
         if not self.is_ready:
             raise RuntimeError("Model or preprocessor is not loaded.")
-        df = pd.DataFrame([features])
+        normalized = self._normalize_features(features)
+        df = pd.DataFrame([normalized])
         X_transformed = self.preprocessor.transform(df)
         proba: float = float(self.model.predict_proba(X_transformed)[0, 1])
 
@@ -107,6 +113,18 @@ class ModelPredictor:
             "top_reasons": explanation["top_reasons"],
             "model_version": self.model_version,
         }
+
+    def _normalize_features(self, features: dict[str, Any]) -> dict[str, Any]:
+        """Coerce and filter input fields to the training feature contract."""
+        normalized = dict(features)
+        for feature in self.required_features:
+            if feature in normalized:
+                continue
+            if feature in self.numeric_features:
+                normalized[feature] = 0
+            else:
+                normalized[feature] = "Other"
+        return {k: normalized[k] for k in self.required_features}
 
     def predict_batch(self, features_list: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Run inference for multiple patients.

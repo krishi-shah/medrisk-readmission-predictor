@@ -11,6 +11,7 @@ from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import seaborn as sns
 from sklearn.calibration import calibration_curve
 from sklearn.metrics import (
@@ -234,3 +235,66 @@ def evaluate_model(
         generate_calibration_curve(y_test, y_prob, save_dir / "calibration_curve.png")
 
     return metrics
+
+
+def save_metrics_report(
+    metrics: dict[str, float],
+    threshold: float,
+    output_path: str | Path,
+    extra: dict[str, Any] | None = None,
+) -> Path:
+    """Persist evaluation metrics to a machine-readable JSON file."""
+    import json
+
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    payload: dict[str, Any] = {
+        "threshold": float(threshold),
+        "metrics": {k: float(v) for k, v in metrics.items()},
+    }
+    if extra:
+        payload.update(extra)
+    with open(output_path, "w", encoding="utf-8") as fh:
+        json.dump(payload, fh, indent=2, sort_keys=True)
+    logger.info("Metrics report saved to %s", output_path)
+    return output_path
+
+
+def check_quality_gates(
+    metrics: dict[str, float],
+    gates: dict[str, float],
+) -> list[str]:
+    """Return a list of quality-gate violations for aggregate metrics."""
+    violations: list[str] = []
+    if "min_pr_auc" in gates and metrics.get("pr_auc", 0.0) < gates["min_pr_auc"]:
+        violations.append(
+            f"PR-AUC {metrics.get('pr_auc', 0.0):.4f} below minimum {gates['min_pr_auc']:.4f}",
+        )
+    if "min_recall" in gates and metrics.get("recall", 0.0) < gates["min_recall"]:
+        violations.append(
+            f"Recall {metrics.get('recall', 0.0):.4f} below minimum {gates['min_recall']:.4f}",
+        )
+    if "max_brier_score" in gates and metrics.get("brier_score", 1.0) > gates["max_brier_score"]:
+        violations.append(
+            f"Brier score {metrics.get('brier_score', 1.0):.4f} above maximum {gates['max_brier_score']:.4f}",
+        )
+    return violations
+
+
+def subgroup_recall_gaps(
+    y_true: np.ndarray,
+    y_pred: np.ndarray,
+    group_values: pd.Series,
+) -> dict[str, float]:
+    """Compute subgroup recall values and max-min recall gap."""
+    recalls: dict[str, float] = {}
+    for value in group_values.dropna().unique():
+        mask = (group_values == value).to_numpy()
+        yt = y_true[mask]
+        yp = y_pred[mask]
+        recalls[str(value)] = float(recall_score(yt, yp, zero_division=0))
+    if not recalls:
+        return {"max_recall_gap": 0.0}
+    max_gap = max(recalls.values()) - min(recalls.values())
+    recalls["max_recall_gap"] = float(max_gap)
+    return recalls

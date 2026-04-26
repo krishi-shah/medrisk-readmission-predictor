@@ -40,7 +40,7 @@ MedRisk is built around four core capabilities.
 
 **Clinical Feature Engineering.** Raw electronic health record data including ICD-9 diagnosis codes, medication records, and prior utilization history is transformed into clinically meaningful features. Diagnosis codes are grouped into 9 clinical categories (Circulatory, Respiratory, Diabetes, etc.), medication change patterns are quantified, and prior visit frequency is engineered into utilization risk indicators.
 
-**Multi-Model Training with Experiment Tracking.** Four model architectures (Logistic Regression, Random Forest, XGBoost, LightGBM) are trained and compared using stratified cross validation. All experiments are logged to MLflow with full hyperparameter, metric, and artifact tracking. Optuna handles Bayesian hyperparameter optimization over 50 trials with PR-AUC as the objective.
+**Multi-Model Training with Experiment Tracking.** Four model architectures (Logistic Regression, Random Forest, XGBoost, LightGBM) are trained and compared using stratified cross-validation for model ranking. All experiments are logged to MLflow with full hyperparameter, metric, and artifact tracking. Optuna handles Bayesian hyperparameter optimization with PR-AUC as the objective.
 
 **SHAP Explainability.** Every prediction comes with a human readable explanation. Global SHAP summary plots reveal which features drive readmission risk across the population, while per-patient waterfall plots explain individual predictions. This transparency is essential for clinical adoption since clinicians need to understand why a patient is flagged, not just that they are.
 
@@ -60,11 +60,11 @@ MedRisk is built around four core capabilities.
 
 4. **Encode** — Categorical features are one-hot encoded and numeric features are standardized through a scikit-learn ColumnTransformer pipeline that handles imputation, scaling, and encoding in a single reproducible step.
 
-5. **Train** — Four models are trained with stratified 70/15/15 splits. XGBoost and LightGBM use `scale_pos_weight` to handle class imbalance. Optuna optimizes hyperparameters over 50 trials. All runs are logged to MLflow.
+5. **Train** — Four models are trained on stratified train/validation splits for tuning, then ranked with stratified cross-validation PR-AUC. XGBoost and LightGBM use `scale_pos_weight` to handle class imbalance. All runs are logged to MLflow.
 
 6. **Evaluate** — Models are compared on ROC-AUC, PR-AUC, F1 score, precision, and recall. Threshold tuning optimizes for clinical utility (target: 70%+ recall to minimize missed high risk patients). Calibration curves verify that predicted probabilities are reliable.
 
-7. **Explain** — SHAP TreeExplainer generates global feature importance plots and per-patient waterfall explanations. Calibration is applied post-hoc using isotonic regression if needed.
+7. **Explain** — SHAP TreeExplainer generates global feature importance plots and per-patient waterfall explanations. Calibration quality is monitored via calibration curves and Brier score.
 
 8. **Serve** — The best model is deployed as a FastAPI service with /predict and /predict/batch endpoints. A Streamlit dashboard provides a clinician facing interface for interactive risk assessment.
 
@@ -513,7 +513,7 @@ make mlflow-ui
 | `make run-api` | Start FastAPI server on port 8000 |
 | `make run-ui` | Start Streamlit dashboard on port 8501 |
 | `make test` | Run pytest test suite |
-| `make evaluate` | Run model evaluation and generate reports |
+| `make evaluate` | Run full evaluation pipeline and quality-gate checks |
 | `make docker-up` | Build and start all services with Docker Compose |
 | `make mlflow-ui` | Launch MLflow experiment tracking UI |
 
@@ -538,7 +538,7 @@ medrisk-readmission-predictor/
 │   ├── features/
 │   │   └── engineer.py                # ICD-9 mapping, medication features, utilization
 │   ├── models/
-│   │   ├── trainer.py                 # Training loop, cross validation, Optuna
+│   │   ├── trainer.py                 # Training loop, CV ranking, Optuna, artifact outputs
 │   │   ├── evaluator.py              # Metrics, calibration, threshold tuning
 │   │   └── explainer.py              # SHAP analysis and plot generation
 │   ├── serving/
