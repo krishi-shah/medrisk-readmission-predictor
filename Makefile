@@ -1,0 +1,35 @@
+.PHONY: install train run-api run-ui test evaluate docker-up docker-down mlflow-ui clean
+
+install:
+	pip install -r requirements.txt
+
+train:
+	python -m src.models.trainer
+
+evaluate:
+	python -m src.models.evaluator
+
+run-api:
+	uvicorn src.serving.api:app --host 0.0.0.0 --port 8000 --reload
+
+run-ui:
+	streamlit run ui/app.py --server.port 8501
+
+test:
+	pytest tests/ -v --tb=short
+
+test-cov:
+	pytest tests/ -v --cov=src --cov-report=term-missing
+
+docker-up:
+	docker compose up --build -d
+
+docker-down:
+	docker compose down
+
+mlflow-ui:
+	mlflow ui --host 0.0.0.0 --port 5000
+
+clean:
+	rm -rf mlruns models/*.joblib models/*.json reports/figures/*.png data/processed/*
+	find . -type d -name __pycache__ -exec rm -rf {} +

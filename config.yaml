@@ -1,0 +1,70 @@
+data:
+  raw_path: data/raw/diabetic_data.csv
+  ids_mapping_path: data/raw/IDs_mapping.csv
+  processed_path: data/processed
+  sample_path: data/sample/sample_data.csv
+
+features:
+  numeric:
+    - age_ordinal
+    - time_in_hospital
+    - num_lab_procedures
+    - num_procedures
+    - num_medications
+    - number_diagnoses
+    - num_med_changes
+    - num_meds_active
+    - total_prior_visits
+  categorical:
+    - race
+    - gender
+    - diag1_category
+    - diag2_category
+    - diag3_category
+    - admission_type_id
+  high_utilizer_threshold: 5
+
+training:
+  test_size: 0.15
+  val_size: 0.15
+  random_state: 42
+  n_optuna_trials: 50
+  optimization_metric: pr_auc
+  threshold_min_recall: 0.70
+  models:
+    - logistic_regression
+    - random_forest
+    - xgboost
+    - lightgbm
+
+optuna:
+  xgboost:
+    n_estimators: [100, 1000]
+    max_depth: [3, 10]
+    learning_rate: [0.01, 0.3]
+    subsample: [0.6, 1.0]
+    colsample_bytree: [0.6, 1.0]
+    scale_pos_weight: [5, 15]
+  lightgbm:
+    n_estimators: [100, 1000]
+    max_depth: [3, 10]
+    learning_rate: [0.01, 0.3]
+    subsample: [0.6, 1.0]
+    colsample_bytree: [0.6, 1.0]
+    scale_pos_weight: [5, 15]
+
+mlflow:
+  tracking_uri: mlruns
+  experiment_name: medrisk-readmission
+
+serving:
+  host: 0.0.0.0
+  port: 8000
+  model_path: models/best_model.joblib
+  preprocessor_path: models/preprocessor.joblib
+  threshold_path: models/threshold.json
+  model_version: xgboost-v1.0-optuna
+
+paths:
+  models_dir: models
+  reports_dir: reports/figures
