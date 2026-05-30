@@ -132,7 +132,18 @@ class TestBatchPredictEndpoint:
         assert "predictions" in data
         assert len(data["predictions"]) == 2
 
-    def test_batch_predict_empty_list(self, client, mock_predictor):
-        mock_predictor.predict_batch.return_value = []
+    def test_batch_predict_empty_list_rejected(self, client, mock_predictor):
         response = client.post("/predict/batch", json={"patients": []})
-        assert response.status_code == 200
+        assert response.status_code == 422
+
+    def test_batch_predict_exceeds_max_size_rejected(self, client, valid_patient_data, mock_predictor):
+        patients = [valid_patient_data] * 501
+        response = client.post("/predict/batch", json={"patients": patients})
+        assert response.status_code == 422
+
+    def test_validation_error_response_has_error_code(self, client):
+        response = client.post("/predict", json={"invalid": "data"})
+        assert response.status_code == 422
+        data = response.json()
+        assert "error_code" in data
+        assert data["error_code"] == "VALIDATION_ERROR"

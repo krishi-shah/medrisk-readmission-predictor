@@ -298,3 +298,43 @@ def subgroup_recall_gaps(
     max_gap = max(recalls.values()) - min(recalls.values())
     recalls["max_recall_gap"] = float(max_gap)
     return recalls
+
+
+def compute_multi_subgroup_fairness(
+    y_true: np.ndarray,
+    y_pred: np.ndarray,
+    groups_df: pd.DataFrame,
+    group_columns: list[str],
+) -> dict[str, dict[str, float]]:
+    """Compute subgroup recall gaps across multiple demographic dimensions.
+
+    Parameters
+    ----------
+    y_true:
+        Ground-truth labels (0/1).
+    y_pred:
+        Hard predictions (0/1).
+    groups_df:
+        DataFrame whose columns contain the grouping variables.
+    group_columns:
+        Column names in *groups_df* to evaluate. Columns not present in
+        *groups_df* are silently skipped.
+
+    Returns
+    -------
+    dict[str, dict[str, float]]
+        Outer key: group column name.
+        Inner dict: recall per group value plus ``"max_recall_gap"``.
+    """
+    results: dict[str, dict[str, float]] = {}
+    for col in group_columns:
+        if col not in groups_df.columns:
+            logger.debug("Skipping fairness column '%s' — not in dataframe", col)
+            continue
+        results[col] = subgroup_recall_gaps(y_true, y_pred, groups_df[col].astype(str))
+        logger.info(
+            "Fairness [%s] — max recall gap: %.4f",
+            col,
+            results[col].get("max_recall_gap", 0.0),
+        )
+    return results
