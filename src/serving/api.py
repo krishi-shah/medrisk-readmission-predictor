@@ -8,7 +8,9 @@ from datetime import datetime, timezone
 from typing import AsyncIterator
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from src.utils.config import get_serving_config
 from src.utils.logger import get_logger
@@ -17,6 +19,7 @@ from .predictor import ModelPredictor
 from .schemas import (
     BatchPredictionRequest,
     BatchPredictionResponse,
+    ErrorResponse,
     HealthResponse,
     PatientFeatures,
     PredictionResponse,
@@ -69,6 +72,28 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(RequestValidationError)
+async def _validation_error_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    return JSONResponse(
+        status_code=422,
+        content=ErrorResponse(
+            error_code="VALIDATION_ERROR",
+            detail=str(exc.errors()),
+        ).model_dump(),
+    )
+
+
+@app.exception_handler(HTTPException)
+async def _http_error_handler(request: Request, exc: HTTPException) -> JSONResponse:
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=ErrorResponse(
+            error_code=f"HTTP_{exc.status_code}",
+            detail=str(exc.detail),
+        ).model_dump(),
+    )
 
 
 @app.middleware("http")

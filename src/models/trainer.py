@@ -402,7 +402,9 @@ def run_training_pipeline() -> dict[str, Any]:
         save_metrics_report,
         check_quality_gates,
         subgroup_recall_gaps,
+        compute_multi_subgroup_fairness,
     )
+    import hashlib
     import json
 
     threshold = _cross_validated_threshold(
@@ -413,24 +415,48 @@ def run_training_pipeline() -> dict[str, Any]:
         cv_folds=cv_folds,
         random_state=random_state,
     )
+
+    fingerprint_payload = json.dumps(
+        {
+            "training_cfg": {k: v for k, v in cfg.items() if k != "models"},
+            "n_train_samples": int(X_train_val.shape[0]),
+            "n_features": int(X_train_val.shape[1]),
+            "best_model": best_name,
+        },
+        sort_keys=True,
+    )
+    training_fingerprint = hashlib.sha256(fingerprint_payload.encode()).hexdigest()[:12]
+
     with open(output_dir / "threshold.json", "w", encoding="utf-8") as fh:
-        json.dump({"threshold": threshold, "min_recall": cfg["threshold_min_recall"]}, fh)
+        json.dump(
+            {
+                "threshold": threshold,
+                "min_recall": cfg["threshold_min_recall"],
+                "training_fingerprint": training_fingerprint,
+            },
+            fh,
+        )
 
     paths_cfg = get_config().get("paths", {})
     reports_dir = _PROJECT_ROOT / paths_cfg.get("reports_dir", "reports/figures")
     test_metrics = evaluate_model(best_model, X_test, y_test, threshold, save_dir=reports_dir)
     y_test_pred = (best_model.predict_proba(X_test)[:, 1] >= threshold).astype(int)
-    fairness = subgroup_recall_gaps(y_test, y_test_pred, test_df["gender"].astype(str))
+
+    fairness_columns = ["gender", "race", "age_ordinal", "admission_type_id"]
+    multi_fairness = compute_multi_subgroup_fairness(y_test, y_test_pred, test_df, fairness_columns)
+
     quality_gates = get_config().get("quality_gates", {})
     violations = check_quality_gates(test_metrics, quality_gates)
-    if (
-        "subgroup_max_recall_gap" in quality_gates
-        and fairness.get("max_recall_gap", 0.0) > quality_gates["subgroup_max_recall_gap"]
-    ):
-        violations.append(
-            "Subgroup recall gap "
-            f"{fairness['max_recall_gap']:.4f} above maximum {quality_gates['subgroup_max_recall_gap']:.4f}",
-        )
+    for col, col_fairness in multi_fairness.items():
+        gap = col_fairness.get("max_recall_gap", 0.0)
+        if (
+            "subgroup_max_recall_gap" in quality_gates
+            and gap > quality_gates["subgroup_max_recall_gap"]
+        ):
+            violations.append(
+                f"Subgroup recall gap [{col}] {gap:.4f} above maximum "
+                f"{quality_gates['subgroup_max_recall_gap']:.4f}",
+            )
 
     metrics_path = _PROJECT_ROOT / paths_cfg.get("metrics_path", "reports/metrics/latest_metrics.json")
     save_metrics_report(
@@ -439,10 +465,11 @@ def run_training_pipeline() -> dict[str, Any]:
         metrics_path,
         extra={
             "best_model": best_name,
+            "training_fingerprint": training_fingerprint,
             "validation_pr_auc": float(results[best_name]["pr_auc"]),
             "cv_pr_auc": float(cv_results[best_name]),
             "quality_gate_violations": violations,
-            "subgroup_gender_recall": fairness,
+            "subgroup_fairness": multi_fairness,
         },
     )
     logger.info(

@@ -69,6 +69,7 @@ st.markdown("""
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 
+@st.cache_data(ttl=60)
 def check_health():
     try:
         resp = requests.get(f"{API_BASE}/health", timeout=5)
@@ -178,6 +179,11 @@ with st.sidebar:
     insulin_changed = st.selectbox("Insulin changed?", ["No", "Yes"])
     race = st.selectbox("Race", RACE_OPTIONS)
     gender = st.selectbox("Gender", GENDER_OPTIONS)
+    admission_type = st.selectbox(
+        "Admission type",
+        ["1 — Emergency", "2 — Urgent", "3 — Elective", "4 — Newborn", "5 — Not available"],
+        help="1=Emergency, 2=Urgent, 3=Elective",
+    )
     diag1_category = st.selectbox("Primary diagnosis", DIAG_CATEGORIES, key="d1")
     diag2_category = st.selectbox("Secondary diagnosis", DIAG_CATEGORIES, index=3, key="d2")
     diag3_category = st.selectbox("Tertiary diagnosis", DIAG_CATEGORIES, index=2, key="d3")
@@ -198,8 +204,10 @@ def _build_payload() -> dict:
         "num_meds_active": num_meds_active,
         "total_prior_visits": total_prior_visits,
         "insulin_changed": 1 if insulin_changed == "Yes" else 0,
+        "high_utilizer": 1 if total_prior_visits >= 5 else 0,
         "race": race,
         "gender": gender,
+        "admission_type_id": admission_type.split(" — ")[0],
         "diag1_category": diag1_category,
         "diag2_category": diag2_category,
         "diag3_category": diag3_category,
@@ -296,6 +304,25 @@ with tab_batch:
                     m1.metric("High Risk", int(tier_counts.get("High", 0)))
                     m2.metric("Medium Risk", int(tier_counts.get("Medium", 0)))
                     m3.metric("Low Risk", int(tier_counts.get("Low", 0)))
+
+                    tier_order = ["High", "Medium", "Low"]
+                    tier_vals = [int(tier_counts.get(t, 0)) for t in tier_order]
+                    tier_colors_list = [TIER_COLORS[t] for t in tier_order]
+                    dist_fig = go.Figure(go.Bar(
+                        x=tier_order,
+                        y=tier_vals,
+                        marker_color=tier_colors_list,
+                        text=tier_vals,
+                        textposition="outside",
+                    ))
+                    dist_fig.update_layout(
+                        title="Risk Tier Distribution",
+                        xaxis_title="Risk Tier",
+                        yaxis_title="Patient Count",
+                        height=300,
+                        margin=dict(t=50, b=40, l=40, r=20),
+                    )
+                    st.plotly_chart(dist_fig, use_container_width=True)
 
                     def _highlight_tier(val):
                         bg = TIER_COLORS.get(val, "")

@@ -1,4 +1,4 @@
-.PHONY: install train evaluate run-api run-ui test test-cov docker-up docker-down mlflow-ui clean
+.PHONY: install train evaluate run-api run-ui test test-cov docker-up docker-down mlflow-ui lint download-data pre-commit clean
 
 install:
 	pip install -r requirements.txt
@@ -29,6 +29,16 @@ docker-down:
 
 mlflow-ui:
 	mlflow ui --host 0.0.0.0 --port 5000
+
+lint:
+	ruff check src/ tests/ --fix
+	ruff format src/ tests/
+
+download-data:
+	python scripts/download_data.py
+
+pre-commit:
+	pre-commit run --all-files
 
 clean:
 	rm -rf mlruns models/*.joblib models/*.json reports/figures/*.png data/processed/*
